@@ -1,96 +1,97 @@
-import { Viro360Image, ViroARScene, ViroARSceneNavigator, ViroBox, ViroMaterials, ViroNode, ViroText, ViroTrackingStateConstants, ViroPolyline } from '@viro-community/react-viro';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { StyleSheet } from 'react-native';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+  ViroARScene,
+  ViroTrackingStateConstants,
+  ViroARSceneNavigator,
+  ViroTrackingState,
+  ViroTrackingReason,
+  ViroButton,
+  ViroSphere
+} from '@viro-community/react-viro';
+import { Viro3DPoint } from '@viro-community/react-viro/dist/components/Types/ViroUtils';
 
-// Define a type for your points of interest
-type PointOfInterest = {
+interface Coordinates {
   id: number;
-  latitude: number;
-  longitude: number;
-  label: string;
-  arCoordinates: { x: number; y: number; z: number }; // Include arCoordinates property
-};
-
-
-const ARScene = () => {
-  const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>([
-    { id: 1, latitude: 19.243139, longitude: 72.982861, label: 'Target 1', arCoordinates: { x: 0, y: 0, z: 0 } },
-    { id: 2, latitude: 19.243189, longitude: 72.982708, label: 'Target 2', arCoordinates: { x: 0, y: 0, z: 0 } },
-    { id: 3, latitude: 0, longitude: 0, label: 'Target 3', arCoordinates: { x: 0, y: 0, z: 0 } },
-    // Add more points of interest here
-  ]);
-
-  const initialCameraPosition = { x: 0, y: 0, z: 0 }; // Set your initial camera position
-
-  useEffect(() => {
-
-    // Convert GPS coordinates to AR world coordinates using Web Mercator projection
-    const convertGPStoARCoordinates = (latitude: PointOfInterest['latitude'], longitude: PointOfInterest['longitude']) => {
-      const metersPerLatDegree = 111200; // Approx. meters per degree latitude
-      const metersPerLngDegree = 111200 * Math.cos(latitude * (Math.PI / 180)); // Approx. meters per degree longitude
-
-      const x = (longitude - initialCameraPosition.x) * metersPerLngDegree;
-      const y = 0; // Elevation can be considered as y-coordinate
-      const z = (latitude - initialCameraPosition.z) * metersPerLatDegree;
-
-      return { x, y, z };
-    };
-
-
-    // Update AR world coordinates for each point of interest
-    const updatedPoints = pointsOfInterest.map((poi) => {
-      const { latitude, longitude } = poi;
-      const arCoordinates = convertGPStoARCoordinates(latitude, longitude);
-      return { ...poi, arCoordinates };
-    });
-
-    setPointsOfInterest(updatedPoints);
-  }, []);
-  console.log("Rendered")
-  console.log(pointsOfInterest)
-
-  return (
-    <ViroARScene>
-      {pointsOfInterest.map((poi) => (
-        <ViroNode key={poi.id}>
-          <ViroText
-            text={poi.label}
-            scale={[1, 1, 1]}
-            position={
-              [
-                poi.arCoordinates.x,
-                poi.arCoordinates.y,
-                poi.arCoordinates.z,
-              ]}
-          />
-        </ViroNode>
-      ))
-      }
-    </ViroARScene >
-  );
+  coordinates: Viro3DPoint | undefined;
 }
 
+const HelloWorldSceneAR = () => {
+  const [coordinates, setCoordinates] = useState<Coordinates[]>([{ "coordinates": [0.2537532448768616, -1.228468656539917, -1.2376713752746582], "id": 1 }, { "coordinates": [-0.2174995243549347, -1.1287752389907837, -1.0586485862731934], "id": 2 }, { "coordinates": [-0.629641592502594, -1.2444515228271484, -0.9369375109672546], "id": 3 }, { "coordinates": [-0.7692882418632507, -0.987709105014801, -1.4685478210449219], "id": 4 }, { "coordinates": [-0.8436772227287292, -0.8886220455169678, -1.8343422412872314], "id": 5 }, { "coordinates": [-0.9250354170799255, -0.884567379951477, -2.222095012664795], "id": 6 }, { "coordinates": [-0.9987673759460449, -0.8240764737129211, -2.5986433029174805], "id": 7 }, { "coordinates": [-1.0510752201080322, -0.8471832275390625, -2.9861409664154053], "id": 8 }, { "coordinates": [-1.0115647315979004, -0.8483832478523254, -3.277928113937378], "id": 9 }, { "coordinates": [-0.6903905272483826, -0.9149320125579834, -3.405579090118408], "id": 10 }, { "coordinates": [-0.3525904417037964, -0.8816515207290649, -3.521821975708008], "id": 11 }, { "coordinates": [0.06288915872573853, -0.889143705368042, -3.732713222503662], "id": 12 }, { "coordinates": [0.40278393030166626, -0.826123058795929, -3.9350171089172363], "id": 13 }, { "coordinates": [0.7681126594543457, -0.8385581970214844, -4.163658142089844], "id": 14 }])
+  const [isTracking, setIsTracking] = useState<boolean>(false);
+  console.log(coordinates)
+
+  function onInitialized(state: ViroTrackingState, reason: ViroTrackingReason) {
+    console.log('----------Initialized---------', state, reason);
+    if (state === ViroTrackingStateConstants.TRACKING_NORMAL) {
+      console.log("-------Tracking is working-------");
+      setIsTracking(true);
+    } else if (state === ViroTrackingStateConstants.TRACKING_UNAVAILABLE) {
+      // Handle loss of tracking
+      console.log("-------Tracking is not working-------");
+      setIsTracking(false);
+    }
+  }
+
+  return (
+    <ViroARScene onTrackingUpdated={onInitialized}>
+      {isTracking && (
+        <>
+          {
+            coordinates.map((coordinate) => {
+              return (
+                <ViroSphere
+                  radius={0.4}
+                  key={coordinate.id}
+                  position={coordinate.coordinates}
+                  scale={[0.2, 0.2, 0.2]}
+                  onDrag={(coord) => {
+                    // set current coordinates
+                    setCoordinates((prevCoordinates) => {
+                      return prevCoordinates.map((prevCoordinate) => prevCoordinate.id === coordinate.id ? { ...prevCoordinate, coordinates: [coord[0], coord[1], coord[2]] } : prevCoordinate)
+                    })
+                  }}
+                />
+              )
+            })
+          }
+          <ViroButton
+            position={[0, 0, -2]}
+            source={require("./res/tracker.jpeg")}
+            onClick={(position, source) => {
+              console.log('clicked', position, source);
+              setCoordinates((prevCoordinates) => {
+                return [
+                  ...prevCoordinates,
+                  { id: prevCoordinates.length + 1, coordinates: [0, 1, -1] }
+                ]
+              })
+            }}
+          /></>
+      )}
+    </ViroARScene>
+  );
+};
 
 export default () => {
   return (
     <ViroARSceneNavigator
       autofocus={true}
       initialScene={{
-        scene: ARScene,
+        scene: HelloWorldSceneAR,
       }}
       style={styles.f1}
     />
   );
 };
 
-const styles = StyleSheet.create({
+var styles = StyleSheet.create({
   f1: { flex: 1 },
+  helloWorldTextStyle: {
+    fontFamily: 'Arial',
+    fontSize: 30,
+    color: '#ffffff',
+    textAlignVertical: 'center',
+    textAlign: 'center',
+  },
 });
