@@ -1,118 +1,128 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
+import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+  ViroARScene,
+  ViroTrackingStateConstants,
+  ViroARSceneNavigator,
+  ViroTrackingState,
+  ViroTrackingReason,
+  ViroSphere,
+  ViroARPlane,
+  ViroMaterials,
+  ViroAnchor,
+  ViroNode,
+} from '@viro-community/react-viro';
+import { Viro3DPoint } from '@viro-community/react-viro/dist/components/Types/ViroUtils';
+import { ARContext } from './Context/ARContext';
+import { Coordinates } from './types/Coordinates';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const HelloWorldSceneAR = () => {
+  const [draggingSphere, setDraggingSphere] = useState<number | null>(null);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const { coordinates, setCoordinates, currentSceneRef, isTracking, setIsTracking } = useContext(ARContext);
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  function onInitialized(state: ViroTrackingState, reason: ViroTrackingReason) {
+    if (state === ViroTrackingStateConstants.TRACKING_NORMAL) {
+      setIsTracking(true);
+    } else if (state === ViroTrackingStateConstants.TRACKING_UNAVAILABLE) {
+      setIsTracking(false);
+    }
+  }
 
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const handleDragStart = (id: number) => {
+    setDraggingSphere(id);
+  };
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const handleDrag = (id: number, newPosition: Viro3DPoint) => {
+    handleDragStart(id);
+    setCoordinates((prevCoordinates) =>
+      prevCoordinates.map((coord) =>
+        coord.id === id
+          ? { ...coord, coordinates: [newPosition[0], 0.1, newPosition[2]] }
+          : coord
+      )
+    );
+    handleDragRelease();
+  };
+
+  const handleDragRelease = () => {
+    setDraggingSphere(null);
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <ViroARScene
+      onTrackingUpdated={onInitialized}
+      ref={currentSceneRef}
+      onAnchorFound={() => console.log("anchor found")}
+      onAnchorUpdated={() => console.log("anchor updated")}
+      onAnchorRemoved={() => console.log("anchor removed")}
+    >
+      <ViroARPlane>
+        {coordinates.map((coordinate) => (
+          <ViroSphere
+            key={coordinate.id}
+            position={coordinate.coordinates}
+            radius={0.1}
+            dragType="FixedToWorld"
+            onDrag={(newPosition, source) => {
+              console.log(newPosition, source);
+              handleDrag(coordinate.id, newPosition)
+            }}
+            physicsBody={{ type: 'Static', restitution: 0.1, useGravity: true }}
+            materials={['stone']}
+          />
+        ))}
+      </ViroARPlane>
+    </ViroARScene>
   );
-}
+};
+
+export default () => {
+  const { addNode } = useContext(ARContext);
+
+  return (
+    <View style={styles.container}>
+      <ViroARSceneNavigator
+        autofocus={true}
+        initialScene={{
+          scene: HelloWorldSceneAR,
+        }}
+        style={styles.arContainer}
+      />
+
+      <View style={styles.controlView}>
+        <Button
+          onPress={addNode}
+          title='Add Node'
+        />
+      </View>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  arContainer: {
+    flex: 1,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  addButton: {
+    width: 200,
+    alignItems: 'center',
+    backgroundColor: 'red',
+    padding: 10,
   },
-  highlight: {
-    fontWeight: '700',
-  },
+  controlView: {
+    width: '100%',
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center'
+  }
 });
 
-export default App;
+ViroMaterials.createMaterials({
+  'stone': {
+    diffuseTexture: require('./res/stone_texture.jpeg')
+  }
+})
