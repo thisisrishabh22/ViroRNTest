@@ -12,7 +12,6 @@
   "dependencies": {
     "@viro-community/react-viro": "^2.23.0",
     "add": "^2.0.6",
-    "mercator-projection": "^0.0.2",
     "react": "18.2.0",
     "react-native": "0.72.4",
     "react-native-get-location": "^4.0.0",
